@@ -16,13 +16,6 @@
    [:clean? a] true
    ... ...}
 
-;; (deftype Adapton [thunk result sub super clean?])
-;; (defrecord Adapton [state]
-;;   clojure.lang.Atom)
-#_(gen-class
- :name memgraph.micro-adapton.Adapton
- :extends clojure.lang.Atom)
-
 (defprotocol IAdapton
   (get-thunk   [this])
   (set-thunk!  [this v])
@@ -53,39 +46,6 @@
   (set-super!  [_ v] (set! super v))
   (get-clean?  [_] clean?)
   (set-clean?! [_ v] (set! clean? v)))
-
-;; I am working on implementing miniAdapton in Clojure. These Adaptons are
-;; wrappers that can contain any value. I need to write some code that looks
-;; like this:
-;; ```
-;; (if (adapton? x)
-;;   (fetch-the-value-of x)
-;;   x)
-;; ```
-;; these adaptons need to be mutable. Atoms will work for now, but I need to be
-;; able to differentiate between adaptons and atoms so I know if I should fetch
-;; the value or not. This suggests to me that I need a new type. Ideally, I
-;; wouldn't wrap my atom, but just have my new type work the exact same way. So
-;; here's my question: How do I create a new type that is a subclass of Atom and
-;; works the exact same way?
-;; another option would be to use metadata with an ::adapton? key on an atom
-
-
-#_(defn adapton
-  [thunk result sub super clean?]
-  (atom {:thunk thunk
-         :result result
-         :sub sub
-         :super super
-         :clean? clean?}))
-
-;; (defn set-result! [a r] (swap! a assoc :result r))
-
-;; (defn set-sub! [a s] (swap! a assoc :sub s))
-
-;; (defn set-super! [a s] (swap! a assoc :super s))
-
-;; (defn set-clean?! [a c] (swap! a assoc :clean? c))
 
 (defn make-athunk
   [thunk]
@@ -131,7 +91,6 @@
   [a v]
   (set-result! a v)
   (dirty! a))
-
 
 (defn as-map
   [a]
