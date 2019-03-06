@@ -31,21 +31,21 @@
   (memoize (fn [x] (adapt (apply f x)))))
 
 (defn adapton-memoize [f]
-  (let [f* (adapton-memoize-l )]
-    (fn [x]
+  (let [f* (adapton-memoize-l f)]
+    (fn [& x]
       (adapton-force (apply f* x)))))
 
 (defmacro lambda-amemo-l
   [args & body]
-  `(let [f* (adapton-memoize-l
+  `(let [f# (adapton-memoize-l
              (fn ~@args ~@body))]
-     (lambda args (f* ~@args))))
+     (lambda args (f# ~@args))))
 
 (defmacro lambda-amemo
   [args & body]
-  `(let [f* (adapton-memoize
+  `(let [f# (adapton-memoize
              (fn ~args ~@body))]
-     (fn ~args (f* ~@args))))
+     (fn ~args (f# ~@args))))
 
 (defmacro define-amemo-l
   [f args & body]
@@ -90,54 +90,68 @@
   )
 
 (comment
+  (define-amemo max-tree [t]
+    (cond
+      (micro/adapton? t) (max-tree (adapton-force t))
+      (seq? t) (max (max-tree (first t))
+                    (max-tree (second t)))
+      :else t))
+
   (pprint
    (macroexpand-1
     '(define-amemo max-tree [t]
        (cond
-         (micro/adapton? t) (max-tree (micro/adapton-force t))
+         (micro/adapton? t) (max-tree (adapton-force t))
          (seq? t) (max (max-tree (first t))
                        (max-tree (second t)))
          :else t))))
 
   (pprint
    (macroexpand-1
-    '(define-amemo max-tree-path [t]
-       (micro/adapton? t) (max-tree-path (micro/adapton-force t))
-       (seq? t) (if (> (max-tree (first t))
-                       (max-tree (second t)))
-                  (conj (max-tree-path (first t)) :left)
-                  (conj (max-tree-path (second t)) :right))
-       :else '())))
-
-
-  (pprint
-   (macroexpand-1
-    '(clodapton.mini-adapton/lambda-amemo
+    '(memgraph.mini-adapton/lambda-amemo
       [t]
       (cond
-        (micro/adapton? t) (max-tree (micro/adapton-force t))
+        (micro/adapton? t) (max-tree (adapton-force t))
         (seq? t) (max (max-tree (first t)) (max-tree (second t)))
         :else t))))
 
+  (let [f__195745__auto__ (adapton-memoize
+                           (fn [t]
+                             (cond
+                               (micro/adapton? t) (max-tree (adapton-force t))
+                               (seq? t) (max (max-tree (first t)) (max-tree (second t)))
+                               :else t)))]
+    (fn [t] (f__195745__auto__ t)))
+
+
+  (define-amemo max-tree-path [t]
+    (micro/adapton? t) (max-tree-path (adapton-force t))
+    (seq? t) (if (> (max-tree (first t))
+                    (max-tree (second t)))
+               (conj (max-tree-path (first t)) :left)
+               (conj (max-tree-path (second t)) :right))
+    :else '())
+
+  (pprint
+     (macroexpand-1
+      '(define-amemo max-tree-path [t]
+         (micro/adapton? t) (max-tree-path (adapton-force t))
+         (seq? t) (if (> (max-tree (first t))
+                         (max-tree (second t)))
+                    (conj (max-tree-path (first t)) :left)
+                    (conj (max-tree-path (second t)) :right))
+         :else '())))
+
   (pprint
    (macroexpand-1
-    '(clodapton.mini-adapton/lambda-amemo
+    '(memgraph.mini-adapton/lambda-amemo
       [t]
-      (micro/adapton? t) (max-tree-path (micro/adapton-force t))
+      (micro/adapton? t) (max-tree-path (adapton-force t))
       (seq? t) (if (> (max-tree (first t))
                       (max-tree (second t)))
                  (conj (max-tree-path (first t)) :left)
                  (conj (max-tree-path (second t)) :right))
       :else '())))
-
-
-  (let [f* (adapton-memoize
-        (fn [t]
-          (cond
-            (micro/adapton? t) (max-tree (micro/adapton-force t))
-            (seq? t) (max (max-tree (first t)) (max-tree (second t)))
-            :else t)))]
-    (fn [t] (f* t)))
 
   )
 

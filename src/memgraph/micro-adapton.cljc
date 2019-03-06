@@ -27,7 +27,8 @@
   (get-super   [this])
   (set-super!  [this v])
   (get-clean?  [this])
-  (set-clean?! [this v]))
+  (set-clean?! [this v])
+  (->map       [this]))
 
 ;; Yes, this :volatile-mutable is bad practice. Just following the paper
 ;; directly here. It seems to be focused on single threaded environments.
@@ -47,11 +48,20 @@
   (get-super   [_] super)
   (set-super!  [_ v] (set! super v))
   (get-clean?  [_] clean?)
-  (set-clean?! [_ v] (set! clean? v)))
+  (set-clean?! [_ v] (set! clean? v))
+  (->map       [_] {:thunk thunk
+                    :result result
+                    :sub sub
+                    :super super
+                    :clean? clean?}))
 
 (defn make-athunk
   [thunk]
   (->Adapton thunk 'empty #{} #{} false))
+
+(defn declare-adapton
+  []
+  (make-athunk nil))
 
 (defn add-dcg-edge!
   [super sub]
@@ -79,8 +89,6 @@
   (when (get-clean? a)
     (set-clean?! a false)
     (doseq [x (get-super a)]
-      (println :dirtying {:result (get-result a)
-                          :clean? (get-clean? a)})
       (dirty! x))))
 
 (defn aref
@@ -94,14 +102,6 @@
   (set-result! a v)
   (dirty! a))
 
-(defn as-map
-  [a]
-  {:thunk (get-thunk a)
-   :result (get-result a)
-   :sub (get-sub a)
-   :super (get-super a)
-   :clean? (get-clean? a)})
-
 (comment
 
   (def r1 (aref 8))
@@ -112,9 +112,9 @@
                         (- (compute r1)
                            (compute r2)))))
 
-  (merge (select-keys (as-map r1) [:result :clean?]) {:sub-count (-> r1 as-map :sub count) :super-count (-> r1 as-map :supers count)})
-  (merge (select-keys (as-map r2) [:result :clean?]) {:sub-count (-> r2 as-map :sub count) :super-count (-> r2 as-map :supers count)})
-  (merge (select-keys (as-map a) [:result :clean?]) {:sub-count (-> a as-map :sub count) :super-count (-> a as-map :supers count)})
+  (->map r1)
+  (->map r2)
+  (->map a)
   (compute a) ;;=> -2
   (set-aref! r1 2)
   (compute a) ;;=> -8
