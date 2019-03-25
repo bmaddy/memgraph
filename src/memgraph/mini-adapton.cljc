@@ -12,15 +12,6 @@
           (micro/add-dcg-edge! @currently-adapting a))
         result))))
 
-(comment
-  (def r (micro/aref 5))
-  (def a (micro/make-athunk #(+ (adapton-force r) 3)))
-  (adapton-force a) ;;=> 8
-  (micro/set-aref! r 2)
-  (adapton-force a) ;;=> 5
-
-  )
-
 (defmacro adapt
   [expr]
   `(micro/make-athunk
@@ -54,18 +45,6 @@
 (defmacro define-amemo
   [f args & body]
   `(def ~f (lambda-amemo ~args ~@body)))
-
-(comment
-  (def r1 (micro/aref 2))
-  (def r2 (micro/aref (+ (adapton-force r1) 4)))
-  (def a (adapt (+ (adapton-force r1)
-                   (adapton-force r2))))
-
-  (adapton-force a) ;;=> 8
-  (micro/set-aref! r1 10)
-  (adapton-force a) ;;=> 16
-
-  )
 
 (defmacro define-avar
   [name expr]
