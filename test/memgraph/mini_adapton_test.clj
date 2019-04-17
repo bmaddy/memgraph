@@ -21,12 +21,12 @@
       (micro/set-aref! r1 10)
       (is (= 16 (sut/adapton-force a))))))
 
-(deftest define-avar-test
+(deftest defn-avar-test
   (testing "from miniAdapton paper section 4.4"
     (map #(ns-unmap *ns* %) '[v1 v2 b])
-    (sut/define-avar v1 2)
-    (sut/define-avar v2 (+ (sut/avar-get v1) 4))
-    (sut/define-avar b (+ (sut/avar-get v1) (sut/avar-get v2)))
+    (sut/defn-avar v1 2)
+    (sut/defn-avar v2 (+ (sut/avar-get v1) 4))
+    (sut/defn-avar b (+ (sut/avar-get v1) (sut/avar-get v2)))
     (is (= 8 (sut/avar-get b)))
     (sut/avar-set! v1 10)
     (is (= 24 (sut/avar-get b)))))
@@ -38,12 +38,12 @@
       ;; Lisp's cdr is slightly different than Clojure's rest function.
       (let [cdr (comp first rest)]
         (map #(ns-unmap *ns* %) '[lucky t1 t2 some-tree])
-        (sut/define-avar lucky 7)
-        (sut/define-avar t1 [1 2])
-        (sut/define-avar t2 [3 4])
-        (sut/define-avar some-tree (vector (sut/avar-get t1) (sut/avar-get t2)))
+        (sut/defn-avar lucky 7)
+        (sut/defn-avar t1 [1 2])
+        (sut/defn-avar t2 [3 4])
+        (sut/defn-avar some-tree (vector (sut/avar-get t1) (sut/avar-get t2)))
 
-        (sut/define-amemo max-tree
+        (sut/defn-amemo max-tree
           [t]
           (cond
             (micro/adapton? t) (max-tree (sut/adapton-force t))
@@ -51,11 +51,10 @@
                            (max-tree (cdr t)))
             :else t))
 
-        (sut/define-amemo max-tree-path
+        (sut/defn-amemo max-tree-path
           [t]
           (cond
             (micro/adapton? t) (max-tree-path (sut/adapton-force t))
-            (and (coll? t) (= 1 (count t))) (max-tree-path (first t))
             (coll? t) (if (> (max-tree (first t))
                              (max-tree (cdr t)))
                         (cons 'left (max-tree-path (first t)))

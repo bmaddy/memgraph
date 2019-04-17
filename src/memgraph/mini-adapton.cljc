@@ -18,17 +18,17 @@
    (fn []
      ~expr)))
 
-(defn adapton-memoize-l [f]
+(defn lazy-adapton-memoize [f]
   (memoize (fn [& x] (adapt (apply f x)))))
 
 (defn adapton-memoize [f]
-  (let [f* (adapton-memoize-l f)]
+  (let [f* (lazy-adapton-memoize f)]
     (fn [& x]
       (adapton-force (apply f* x)))))
 
-(defmacro lambda-amemo-l
+(defmacro lazy-lambda-amemo
   [args & body]
-  `(let [f# (adapton-memoize-l
+  `(let [f# (lazy-adapton-memoize
              (fn ~@args ~@body))]
      (lambda args (f# ~@args))))
 
@@ -38,15 +38,15 @@
              (fn ~args ~@body))]
      (fn ~args (f# ~@args))))
 
-(defmacro define-amemo-l
+(defmacro lazy-defn-amemo
   [f args & body]
-  `(def ~f (lambda-amemo-l ~args ~@body)))
+  `(def ~f (lazy-lambda-amemo ~args ~@body)))
 
-(defmacro define-amemo
+(defmacro defn-amemo
   [f args & body]
   `(def ~f (lambda-amemo ~args ~@body)))
 
-(defmacro define-avar
+(defmacro defn-avar
   [name expr]
   `(def ~name
      (micro/aref (adapt ~expr))))
@@ -57,59 +57,3 @@
 (defmacro avar-set!
   [v expr]
   `(micro/set-aref! ~v (adapt ~expr)))
-
-
-
-
-
-(define-amemo max-tree [t]
-  (cond
-    (micro/adapton? t) (max-tree (adapton-force t))
-    (and (coll? t) (= 1 (count t))) (max-tree (first t))
-    (coll? t) (max (max-tree (first t))
-                   (max-tree (rest t)))
-    :else t))
-
-(comment
-
-  (define-amemo max-tree-path [t]
-    (micro/adapton? t) (max-tree-path (adapton-force t))
-    (seq? t) (if (> (max-tree (first t))
-                    (max-tree (second t)))
-               (conj (max-tree-path (first t)) :left)
-               (conj (max-tree-path (second t)) :right))
-    :else '())
-
-  (pprint
-     (macroexpand-1
-      '(define-amemo max-tree-path [t]
-         (micro/adapton? t) (max-tree-path (adapton-force t))
-         (seq? t) (if (> (max-tree (first t))
-                         (max-tree (second t)))
-                    (conj (max-tree-path (first t)) :left)
-                    (conj (max-tree-path (second t)) :right))
-         :else '())))
-
-  (pprint
-   (macroexpand-1
-    '(memgraph.mini-adapton/lambda-amemo
-      [t]
-      (micro/adapton? t) (max-tree-path (adapton-force t))
-      (seq? t) (if (> (max-tree (first t))
-                      (max-tree (second t)))
-                 (conj (max-tree-path (first t)) :left)
-                 (conj (max-tree-path (second t)) :right))
-      :else '())))
-
-  (define-avar lucky 7)
-  (define-avar t1 [1 2])
-  (define-avar t2 [3 4])
-  (define-avar some-tree (list* (avar-get t1) (avar-get t2)))
-  (avar-get some-tree) ;; [[1 2] 3 4]
-  (max-tree some-tree) ;; 4
-
-  )
-
-;; TODO test these functions
-;; TODO switch define-* to defn-*
-;; TODO switch *-l to *-lazy
