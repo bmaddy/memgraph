@@ -17,7 +17,6 @@
    ... ...}
 
 (defprotocol IAdapton
-  (adapton?    [this])
   (get-thunk   [this])
   (set-thunk!  [this v])
   (get-result  [this])
@@ -38,7 +37,6 @@
                   ^:volatile-mutable super
                   ^:volatile-mutable clean?]
   IAdapton
-  (adapton?    [_] true)
   (get-thunk   [_] thunk)
   (set-thunk!  [_ v] (set! thunk v))
   (get-result  [_] result)
@@ -54,6 +52,8 @@
                     :sub sub
                     :super super
                     :clean? clean?}))
+
+(def adapton? (partial instance? Adapton))
 
 (defn make-athunk
   [thunk]

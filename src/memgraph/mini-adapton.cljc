@@ -19,7 +19,7 @@
      ~expr)))
 
 (defn adapton-memoize-l [f]
-  (memoize (fn [x] (adapt (apply f x)))))
+  (memoize (fn [& x] (adapt (apply f x)))))
 
 (defn adapton-memoize [f]
   (let [f* (adapton-memoize-l f)]
@@ -58,50 +58,19 @@
   [v expr]
   `(micro/set-aref! ~v (adapt ~expr)))
 
+
+
+
+
+(define-amemo max-tree [t]
+  (cond
+    (micro/adapton? t) (max-tree (adapton-force t))
+    (and (coll? t) (= 1 (count t))) (max-tree (first t))
+    (coll? t) (max (max-tree (first t))
+                   (max-tree (rest t)))
+    :else t))
+
 (comment
-  (define-avar v1 2)
-  (define-avar v2 (+ (avar-get v1) 4))
-  (define-avar b (+ (avar-get v1) (avar-get v2)))
-  (avar-get b) ;;=> 8
-  (avar-set! v1 10)
-  (avar-get b) ;;=> 24
-
-  )
-
-(comment
-  (define-amemo max-tree [t]
-    (cond
-      (micro/adapton? t) (max-tree (adapton-force t))
-      (seq? t) (max (max-tree (first t))
-                    (max-tree (second t)))
-      :else t))
-
-  (pprint
-   (macroexpand-1
-    '(define-amemo max-tree [t]
-       (cond
-         (micro/adapton? t) (max-tree (adapton-force t))
-         (seq? t) (max (max-tree (first t))
-                       (max-tree (second t)))
-         :else t))))
-
-  (pprint
-   (macroexpand-1
-    '(memgraph.mini-adapton/lambda-amemo
-      [t]
-      (cond
-        (micro/adapton? t) (max-tree (adapton-force t))
-        (seq? t) (max (max-tree (first t)) (max-tree (second t)))
-        :else t))))
-
-  (let [f__195745__auto__ (adapton-memoize
-                           (fn [t]
-                             (cond
-                               (micro/adapton? t) (max-tree (adapton-force t))
-                               (seq? t) (max (max-tree (first t)) (max-tree (second t)))
-                               :else t)))]
-    (fn [t] (f__195745__auto__ t)))
-
 
   (define-amemo max-tree-path [t]
     (micro/adapton? t) (max-tree-path (adapton-force t))
@@ -131,6 +100,13 @@
                  (conj (max-tree-path (first t)) :left)
                  (conj (max-tree-path (second t)) :right))
       :else '())))
+
+  (define-avar lucky 7)
+  (define-avar t1 [1 2])
+  (define-avar t2 [3 4])
+  (define-avar some-tree (list* (avar-get t1) (avar-get t2)))
+  (avar-get some-tree) ;; [[1 2] 3 4]
+  (max-tree some-tree) ;; 4
 
   )
 
