@@ -33,37 +33,52 @@
 
 (deftest extended-example-test
   (testing "from miniAdapton paper section 4.5"
-    (testing "max-tree"
-      (map #(ns-unmap *ns* %) '[lucky t1 t2 some-tree])
-      (sut/define-avar lucky 7)
-      (sut/define-avar t1 [1 2])
-      (sut/define-avar t2 [3 4])
-      (sut/define-avar some-tree (list* (sut/avar-get t1) (sut/avar-get t2)))
-      (sut/define-amemo max-tree
-        [t]
-        (cond
-          (micro/adapton? t) (max-tree (sut/adapton-force t))
-          (and (coll? t) (= 1 (count t))) (max-tree (first t))
-          (coll? t) (max (max-tree (first t))
-                         (max-tree (rest t)))
-          :else t))
-      (is (= [[1 2] 3 4] (sut/avar-get some-tree)))
-      (is (= 4 (max-tree some-tree))))
+    (testing "max-tree and max-tree-path"
+      ;; Clojure doesn't have a pair type so we're using collections instead.
+      ;; Lisp's cdr is slightly different than Clojure's rest function.
+      (let [cdr (comp first rest)]
+        (map #(ns-unmap *ns* %) '[lucky t1 t2 some-tree])
+        (sut/define-avar lucky 7)
+        (sut/define-avar t1 [1 2])
+        (sut/define-avar t2 [3 4])
+        (sut/define-avar some-tree (vector (sut/avar-get t1) (sut/avar-get t2)))
 
-    (testing "max-tree-path"
-      (map #(ns-unmap *ns* %) '[lucky t1 t2 some-tree])
-      (sut/define-avar lucky 7)
-      (sut/define-avar t1 [1 2])
-      (sut/define-avar t2 [3 4])
-      (sut/define-avar some-tree (list* (sut/avar-get t1) (sut/avar-get t2)))
-      (sut/define-amemo max-tree-path
-        [t]
-        (cond
-          (micro/adapton? t) (max-tree-path (sut/adapton-force t))
-          ;; working here
-          (and (coll? t) (= 1 (count t))) (max-tree (first t))
-          (coll? t) (max (max-tree (first t))
-                         (max-tree (rest t)))
-          :else t))
-      (is (= [[1 2] 3 4] (sut/avar-get some-tree)))
-      (is (= 4 (max-tree some-tree))))))
+        (sut/define-amemo max-tree
+          [t]
+          (cond
+            (micro/adapton? t) (max-tree (sut/adapton-force t))
+            (coll? t) (max (max-tree (first t))
+                           (max-tree (cdr t)))
+            :else t))
+
+        (sut/define-amemo max-tree-path
+          [t]
+          (cond
+            (micro/adapton? t) (max-tree-path (sut/adapton-force t))
+            (and (coll? t) (= 1 (count t))) (max-tree-path (first t))
+            (coll? t) (if (> (max-tree (first t))
+                             (max-tree (cdr t)))
+                        (cons 'left (max-tree-path (first t)))
+                        (cons 'right (max-tree-path (cdr t))))
+            :else []))
+
+        (is (= [[1 2] [3 4]] (sut/avar-get some-tree)))
+        (is (= 4 (max-tree some-tree)))
+        (is (= '[right right] (max-tree-path some-tree)))
+
+        (sut/avar-set! t2 5)
+        (is (= [[1 2] 5] (sut/avar-get some-tree)))
+        (is (= 5 (max-tree some-tree)))
+        (is (= '[right] (max-tree-path some-tree)))
+        (is (= 5 (max-tree (cdr (sut/avar-get some-tree)))))
+        (is (= [] (max-tree-path (cdr (sut/avar-get some-tree)))))
+
+        (sut/avar-set! t2 (vector 20 (* 3 (sut/avar-get lucky))))
+        (is (= [[1 2] [20 21]] (sut/avar-get some-tree)))
+        (is (= 21 (max-tree some-tree)))
+        (is (= '[right right] (max-tree-path some-tree)))
+
+        (sut/avar-set! lucky 3)
+        (is (= [[1 2] [20 9]] (sut/avar-get some-tree)))
+        (is (= 20 (max-tree some-tree)))
+        (is (= '[right left] (max-tree-path some-tree)))))))
