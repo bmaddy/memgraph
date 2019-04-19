@@ -1,21 +1,6 @@
 (ns memgraph.micro-adapton
   "Not thread safe. A faithful implementation of microAdapton for reference purposes.")
 
-;; a future method that is similar to make-hierarchy
-;; (def graph (atom {:subs {} :supers {}}))
-#_{:subs {a #{r1 r2}}
-   :supers {r1 #{a}
-            r2 #{a}}
-   :athunks {a (fn ...)}
-   :results {a -2}
-   :clean? {a true}}
-
-;; maybe use this with a lock for performance?
-;; maybe build up a list of changes that need to be made and do them all at once?
-#_{[:subs a] #{r1 r2}
-   [:clean? a] true
-   ... ...}
-
 (defprotocol IAdapton
   (get-thunk   [this])
   (set-thunk!  [this v])
@@ -29,8 +14,6 @@
   (set-clean?! [this v])
   (->map       [this]))
 
-;; Yes, this :volatile-mutable is bad practice. Just following the paper
-;; directly here. It seems to be focused on single threaded environments.
 (deftype Adapton [^:volatile-mutable thunk
                   ^:volatile-mutable result
                   ^:volatile-mutable sub
