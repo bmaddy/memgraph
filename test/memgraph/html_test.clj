@@ -1,7 +1,11 @@
 (ns memgraph.html-test
   (:require [clojure.test :as t]
             [memgraph.micro-adapton :refer [adapton?]]
-            [memgraph.mini-adapton :refer [avar avar-get adapton-force defn-amemo]]))
+            [memgraph.mini-adapton :refer [avar avar-get avar-set! adapton-force defn-amemo]]))
+
+(defn q
+  [items]
+  (into (clojure.lang.PersistentQueue/EMPTY) items))
 
 (def data
   "A random graph of data"
@@ -15,25 +19,28 @@
          (map (fn [[k vs]]
                 [k (set (map second vs))]))
          (into {})))
-  {"4" #{"5" "9"},
-   "0" #{"8"},
-   "1" #{"2" "9"},
-   "2" #{"4" "8"},
-   "7" #{"7"},
-   "9" #{"7" "1" "2" "8"},
-   "8" #{"0" "7"},
-   "5" #{"0"}})
+  {"4" (q ["5" "9"]),
+   "0" (q ["8"]),
+   "1" (q ["2" "9"]),
+   "2" (q ["4" "8"]),
+   "7" (q ["7"]),
+   "9" (q ["7" "1" "2" "8"]),
+   "8" (q ["0" "7"]),
+   "5" (q ["0"])})
 
-(def data-avar
+(defn make-data-avar
  "Adapton version of data"
- {"4" (avar #{"5" "9"}),
-  "0" (avar #{"8"}),
-  "1" (avar #{"2" "9"}),
-  "2" (avar #{"4" "8"}),
-  "7" (avar #{"7"}),
-  "9" (avar #{"7" "1" "2" "8"}),
-  "8" (avar #{"0" "7"}),
-  "5" (avar #{"0"})})
+  []
+  {"4" (avar (q ["5" "9"])),
+   "0" (avar (q ["8"])),
+   "1" (avar (q ["2" "9"])),
+   "2" (avar (q ["4" "8"])),
+   "7" (avar (q ["7"])),
+   "9" (avar (q ["7" "1" "2" "8"])),
+   "8" (avar (q ["0" "7"])),
+   "5" (avar (q ["0"]))})
+
+(def data-avar (make-data-avar))
 
 ;; https://en.wikipedia.org/wiki/Incremental_computing#/media/File:Incremental_computing.svg
 ;; input-1 -> P -> output-1
@@ -48,11 +55,12 @@
   [data ks max-depth]
   (cond
     (zero? max-depth) nil
-    :else (list* :ul
-                 (mapv (fn [k]
-                         (if-let [descendants (hiccup data (get data k) (dec max-depth))]
-                           [:li k descendants]
-                           [:li k])) ks))))
+    :else (vec
+           (list* :ul
+                  (mapv (fn [k]
+                          (if-let [descendants (hiccup data (get data k) (dec max-depth))]
+                            [:li k descendants]
+                            [:li k])) ks)))))
 
 (declare hiccup-memo)
 
@@ -61,58 +69,92 @@
   [data ks max-depth]
   (cond
     (zero? max-depth) nil
-    :else (list* :ul
-                 (mapv (fn [k]
-                         (if-let [descendants (hiccup-memo data (get data k) (dec max-depth))]
-                           [:li k descendants]
-                           [:li k])) ks))))
+    :else (vec
+           (list* :ul
+                  (mapv (fn [k]
+                          (if-let [descendants (hiccup-memo data (get data k) (dec max-depth))]
+                            [:li k descendants]
+                            [:li k])) ks)))))
 
 (def hiccup-memo (memoize hiccup-memo*))
 
 (defn-amemo hiccup-amemo
-  #_(hiccup-amemo data ["1"] 3)
+  #_(hiccup-amemo data-avar ["1"] 3)
   [data ks max-depth]
   (cond
     (adapton? ks) (hiccup-amemo data (adapton-force ks) max-depth)
     (zero? max-depth) nil
-    :else (list* :ul
-                 (mapv (fn [k]
-                         (if-let [descendants (hiccup-amemo data (get data k) (dec max-depth))]
-                           [:li k descendants]
-                           [:li k])) ks))))
+    :else (vec
+           (list* :ul
+                  (mapv (fn [k]
+                          (if-let [descendants (hiccup-amemo data (get data k) (dec max-depth))]
+                            [:li k descendants]
+                            [:li k])) ks)))))
 
 (comment
-  (= (hiccup       data ["1"] 20)
-     (hiccup-memo  data ["1"] 20)
-     (hiccup-amemo data ["1"] 20))
+  (= (hiccup       data      ["1"] 20)
+     (hiccup-memo  data      ["1"] 20)
+     (hiccup-amemo data-avar ["1"] 20))
 
+  ;; both memoized versions are faster
   (time (count (hiccup data ["1"] 34)))
   (time (count (hiccup-memo data ["1"] 34)))
-  (time (count (hiccup-amemo data ["1"] 34)))
+  (time (count (hiccup-amemo data-avar ["1"] 34)))
+
+
+  ;; What if we do it more times?
 
   ;; memoized persistent data structures
   (time (dotimes [n 10000000]
-          (hiccup-memo data ["1"] 500)))
+          (hiccup-memo data ["1"] 100)))
   ;; memoized adapton
   (time (dotimes [n 10000000]
-          (hiccup-amemo data ["1"] 500)))
+          (hiccup-amemo data-avar ["1"] 100)))
+
 
   ;; updating a value to something different each iteration
-  ;; emulating dragging and dependent variables
+  (def updates
+    (take 10000
+          (map vector
+               (repeatedly #(rand-nth (keys data)))
+               (repeatedly #(rand-nth (keys data))))))
 
+  (time
+   (count
+    (reduce (fn [d [k v]]
+              (hiccup-memo d ["1"] 10)
+              ;; for debugging updates
+              #_(println (->> d
+                              (sort-by first)
+                              (map second)
+                              (map vec)))
+              (update d k #(-> % pop (conj v))))
+            data
+            updates)))
+
+  (def data-avar (make-data-avar))
+
+  (time
+   (count
+    (reduce (fn [d [k v]]
+              (hiccup-amemo d ["1"] 10)
+              ;; for debugging updates
+              #_(println (->> d
+                              (sort-by first)
+                              (map second)
+                              (map avar-get)
+                              pprint))
+              (let [av (get d k)
+                    updated (-> av avar-get pop (conj v))]
+                (avar-set! av updated))
+              d)
+            data-avar
+            updates)))
+
+
+  ;; These aren't really fair tests
+  ;; * using persistent data structures in adapton implementation
+  ;; * should be using mutable variables
+
+  ;; Possible future test: emulating dragging and dependent variables
   )
-
-
-;; try generating dom commands
-
-#_(defn P
-  "Returns a DOM element that displays data."
-  [data]
-  (fn [node]
-    (doseq [[label value] data
-            :let [label-node (js/document.createTextNode )]]
-      (.appendChild node (js/document.createElement "li")))))
-
-;; I'm not sure we'd have to write this one...
-#_(defn delta-P
-  "Given a sequence of changes, returns a function that changes the DOM?")
