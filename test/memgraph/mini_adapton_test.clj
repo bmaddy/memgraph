@@ -31,6 +31,15 @@
     (sut/avar-set! v1 10)
     (is (= 24 (sut/avar-get b)))))
 
+(deftest avar-test
+  (testing "anonymous avar"
+    (let [v1 (sut/avar 2)
+          v2 (sut/avar (+ (sut/avar-get v1) 4))
+          b (sut/avar (+ (sut/avar-get v1) (sut/avar-get v2)))]
+      (is (= 8 (sut/avar-get b)))
+      (sut/avar-set! v1 10)
+      (is (= 24 (sut/avar-get b))))))
+
 (deftest extended-example-test
   (testing "from miniAdapton paper section 4.5"
     (testing "max-tree and max-tree-path"

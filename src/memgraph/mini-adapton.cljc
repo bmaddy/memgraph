@@ -51,6 +51,10 @@
   `(def ~name
      (micro/aref (adapt ~expr))))
 
+(defmacro avar
+  [expr]
+  `(micro/aref (adapt ~expr)))
+
 (defn avar-get [v]
   (adapton-force (adapton-force v)))
 

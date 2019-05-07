@@ -1,5 +1,6 @@
 (ns memgraph.micro-adapton
-  "Not thread safe. A faithful implementation of microAdapton for reference purposes.")
+  "A faithful implementation of microAdapton for reference purposes. Thread
+  safety has not been tested.")
 
 (defprotocol IAdapton
   (get-thunk   [this])
@@ -61,10 +62,14 @@
   (if (get-clean? a)
     (get-result a)
     (do
+      ;; recomputing, all old subcomputations are invalid
       (doseq [x (get-sub a)]
         (del-dcg-edge! a x))
+      ;; this will be clean once we recompute
       (set-clean?! a true)
+      ;; evaluate the thunk and remember the result
       (set-result! a ((get-thunk a)))
+      ;; recompute in case the athunk has been marked dirty in the meantime
       (compute a))))
 
 (defn dirty!
