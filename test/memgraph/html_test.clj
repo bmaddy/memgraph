@@ -156,5 +156,7 @@
   ;; * using persistent data structures in adapton implementation
   ;; * should be using mutable variables
 
-  ;; Possible future test: emulating dragging and dependent variables
+  ;; Possible future tests:
+  ;; * use mutable variables
+  ;; * emulate dragging a bunch of dependent points using dependent avars
   )
