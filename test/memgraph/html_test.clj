@@ -102,6 +102,14 @@
   (time (count (hiccup-amemo data-avar ["1"] 34)))
 
 
+  ;; NOTE: these speed tests are pretty sloppy and inconclusive because this
+  ;; implementation uses Clojure's persistent data structures for the adapton
+  ;; implementation. Really they should be mutable variables. I did it this way
+  ;; initially because it was easy and was hoping to see a massive improvement
+  ;; with the adapton algorithm.
+  ;;
+  ;; * This in no way suggests that adapton is slower.
+
   ;; What if we do it more times?
 
   ;; memoized persistent data structures
@@ -114,10 +122,11 @@
 
   ;; updating a value to something different each iteration
   (def updates
-    (take 10000
-          (map vector
-               (repeatedly #(rand-nth (keys data)))
-               (repeatedly #(rand-nth (keys data))))))
+    (vec
+     (take 10000
+           (map vector
+                (repeatedly #(rand-nth (keys data)))
+                (repeatedly #(rand-nth (keys data)))))))
 
   (time
    (count
@@ -153,10 +162,10 @@
 
 
   ;; These aren't really fair tests
-  ;; * using persistent data structures in adapton implementation
-  ;; * should be using mutable variables
+  ;; * should review the implementation more closely
+  ;; * should be using criterium
 
   ;; Possible future tests:
-  ;; * use mutable variables
+  ;; * use mutable queue instead of persistent one
   ;; * emulate dragging a bunch of dependent points using dependent avars
   )

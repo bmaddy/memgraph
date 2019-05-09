@@ -70,7 +70,7 @@
       ;; evaluate the thunk and remember the result
       (set-result! a ((get-thunk a)))
       ;; recompute in case the athunk has been marked dirty in the meantime
-      (compute a))))
+      (recur a))))
 
 (defn dirty!
   [a]
@@ -100,9 +100,9 @@
                         (- (compute r1)
                            (compute r2)))))
 
-  (->map r1)
-  (->map r2)
-  (->map a)
+  (pprint (->map r1))
+  (pprint (->map r2))
+  (pprint (->map a))
   (compute a) ;;=> -2
   (set-aref! r1 2)
   (compute a) ;;=> -8
