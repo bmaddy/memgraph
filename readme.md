@@ -17,8 +17,8 @@ Reactive Computing](http://www.informatik.uni-marburg.de/~seba/publications/IC-d
 * maybe use proteus for the mutable state? - https://github.com/ztellman/proteus
 * make it work with core.cache and core.memoize
 * maybe implement shadow dom and compare against vue and react?
- * Preact.js has a small api, might be a good way to do a POC
- * build your own react guides:
-  * https://hackernoon.com/build-your-own-react-48edb8ed350d
-  * https://engineering.hexacta.com/didact-learning-how-react-works-by-building-it-from-scratch-51007984e5c5
+** Preact.js has a small api, might be a good way to do a POC
+** build your own react guides:
+*** https://hackernoon.com/build-your-own-react-48edb8ed350d
+*** https://engineering.hexacta.com/didact-learning-how-react-works-by-building-it-from-scratch-51007984e5c5
 
